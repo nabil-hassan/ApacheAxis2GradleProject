@@ -1,0 +1,13 @@
+apply plugin: 'java'
+apply plugin: 'application'
+
+
+repositories {
+    jcenter()
+}
+
+mainClassName = "SampleApplication"
+
+dependencies {
+    compile "org.apache.axis2:axis2:$axisVersion"
+}
