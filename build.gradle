@@ -6,8 +6,66 @@ repositories {
     jcenter()
 }
 
-mainClassName = "SampleApplication"
+mainClassName = "SampleAxisProject"
+
+ext {
+    webServiceClass = "sample.webservice.server.StockService"
+    generatedDir = "${buildDir}/generated"
+}
 
 dependencies {
     compile "org.apache.axis2:axis2:$axisVersion"
+    compile "org.apache.axis2:axis2-java2wsdl:$axisVersion"
+    compile "org.apache.axis2:axis2-jibx:$axisVersion"
 }
+
+task compileWebService(type: JavaCompile,
+        description: "Compiles the WebService Java Class",
+        group: 'build') {
+    classpath = sourceSets.main.compileClasspath
+    File classDir = new File("${buildDir}/classes/main");
+    if (!classDir.exists()) {
+        classDir.mkdirs()
+    }
+    destinationDir = file('build/classes/main')
+    String serviceFile = "${projectDir}/src/main/java/" + "${webServiceClass}".replaceAll("\\.", "/") + ".java";
+    source = serviceFile
+}
+
+task createGeneratedDirectory(description: "Creates a directory for generated content") << {
+    File generatedDirectory = new File("${generatedDir}");
+    if (!generatedDirectory.exists()) {
+        generatedDirectory.mkdirs();
+    }
+}
+
+task generateWsdl(type: JavaExec,
+        description: 'Generates WSDL for the defined Axis service',
+        group: 'build',
+        dependsOn: ['compileWebService', 'createGeneratedDirectory']) {
+    main = 'org.apache.ws.java2wsdl.Java2WSDL'
+    args "-o", "$generatedDir", "-cn", "${webServiceClass}"
+    maxHeapSize = '100M'
+    classpath = sourceSets.main.compileClasspath + files("${buildDir}/classes/main")
+}
+
+task generateClientCode(type: JavaExec,
+        description: 'Generates Java code that can be used as a client of the Axis service.',
+        group: 'build',
+        dependsOn: 'generateWsdl') {
+    main = 'org.apache.axis2.wsdl.WSDL2Java'
+    args "-uri", "${generatedDir}/StockService.wsdl", "-p", "sample.webservice.client", "-d", "jibx", "-s",
+            "-uw", "-o", "${generatedDir}"
+    maxHeapSize = '100M'
+    classpath = sourceSets.main.compileClasspath
+}
+
+task generateAAR(type:)
+
+task createAAR(description: "Creates an Axis archive that can be deployed onto Axis server",
+        group: 'build',
+        dependsOn: 'compileJava') {
+
+}
+
+compileJava.dependsOn('generateClientCode')

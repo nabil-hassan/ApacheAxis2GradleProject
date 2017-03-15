@@ -1,4 +1,4 @@
-package webservice;
+package sample.webservice.server;
 
 import java.util.HashMap;
 

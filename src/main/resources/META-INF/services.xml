@@ -11,6 +11,6 @@
                 class="org.apache.axis2.rpc.receivers.RPCMessageReceiver"/>
     </messageReceivers>
     <parameter name="ServiceClass">
-        webservice.StockService
+        sample.webservice.server.StockService
     </parameter>
 </service>
