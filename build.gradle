@@ -26,7 +26,6 @@ sourceSets {
             resources {
                 srcDir "${generatedDir}/resources"
             }
-            output.resourcesDir = 'META-INF'
         }
     }
 
