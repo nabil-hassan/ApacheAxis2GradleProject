@@ -9,21 +9,24 @@ repositories {
 mainClassName = "SampleAxisProject"
 
 ext {
-    webServiceClass = "sample.webservice.server.StockService"
     generatedDir = "${buildDir}/generated"
 }
 
 dependencies {
     compile "org.apache.axis2:axis2:$axisVersion"
     compile "org.apache.axis2:axis2-java2wsdl:$axisVersion"
-    compile "org.apache.axis2:axis2-jibx:$axisVersion"
 }
 
 sourceSets {
-    // Define a new source set for generated client-side code.
+    // Define a new source set for generated client and server code.
     generated {
         java {
+            compileClasspath = sourceSets.main.compileClasspath
             srcDirs = ["${generatedDir}/src"]
+            resources {
+                srcDir "${generatedDir}/resources"
+            }
+            output.resourcesDir = 'META-INF'
         }
     }
 
@@ -34,7 +37,6 @@ sourceSets {
         }
     }
 }
-
 
 /**
  * Create the directory used to hold generated content.
@@ -49,15 +51,34 @@ task createGeneratedDirectory(description: "Creates a directory for generated co
 /**
  * Generate client code stubs that can be used to invoke operations on the Axis webservice.
  */
-task generateClientCode(type: JavaExec,
-        description: 'Generates Java code that can be used as a client of the Axis service.',
+task generateWebServiceCode(type: JavaExec,
+        description: 'Generates Java code from an external WSDL.',
         group: 'build',
         dependsOn: 'createGeneratedDirectory') {
     main = 'org.apache.axis2.wsdl.WSDL2Java'
-    args "-uri", "${generatedDir}/StockService.wsdl", "-p", "sample.webservice.client", "-d", "jibx", "-s",
-            "-uw", "-o", "${generatedDir}", "-or"
+    args "--noBuildXML", "-uri", "http://www.webservicex.com/globalweather.asmx?wsdl", "-p",
+            "sample.webservice.client", "-d", "adb", "-uw", "-o", "${generatedDir}",
+            "-or", "-s", "-ss", "-sd", "-ssi"
     maxHeapSize = '100M'
     classpath = sourceSets.main.compileClasspath
 }
 
-compileJava.dependsOn('generateClientCode')
+/**
+ * Generate an Apache Axis archive file for the external service.
+ * This can be useful if you wish to test operations on the external service against a local instance of it.
+ */
+task generateServiceAARFile(type: Jar,
+        group: 'build',
+        dependsOn: 'generateWebServiceCode') {
+    baseName = "WeatherService"
+    extension = "aar"
+
+    from(sourceSets.generated.output) {
+        include("**/*.class")
+    }
+    from(sourceSets.generated.resources) {
+        into('META-INF')
+    }
+}
+
+compileJava.dependsOn('generateWebServiceCode')
