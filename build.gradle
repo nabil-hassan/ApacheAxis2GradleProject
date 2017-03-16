@@ -49,19 +49,41 @@ task createGeneratedDirectory(description: "Creates a directory for generated co
 }
 
 /**
- * Generate client code stubs that can be used to invoke operations on the Axis webservice.
+ * Generate server-side code that can be used to run a representation of the specified web service on an Axis-enabled
+ * servlet container.
  */
-task generateWebServiceCode(type: JavaExec,
+task generateServerSideCode(type: JavaExec,
         description: 'Generates Java code from an external WSDL.',
         group: 'build',
         dependsOn: 'createGeneratedDirectory') {
     main = 'org.apache.axis2.wsdl.WSDL2Java'
-    args "--noBuildXML", "-uri", "http://www.webservicex.com/globalweather.asmx?wsdl", "-p",
-            "sample.webservice", "-d", "adb", "-uw", "-o", "${generatedDir}",
-            "-or", "-s", "-ss", "-sd", "-ssi"
+    args "-uri", "http://www.webservicex.com/globalweather.asmx?wsdl",
+            "-p", "net.weather.webservice",
+            "-d", "adb",
+            "-o", "${generatedDir}",
+            "-uw", "-or", "-s", "-sd", "-ss", "-ssi"
     maxHeapSize = '100M'
     classpath = sourceSets.main.compileClasspath
 }
+
+/**
+ * Generate client-side code that can be used to invoke the web service.
+ */
+task generateClientSideCode(type: JavaExec,
+        description: 'Generates Java code from an external WSDL.',
+        group: 'build',
+        dependsOn: 'createGeneratedDirectory') {
+    main = 'org.apache.axis2.wsdl.WSDL2Java'
+    args "-uri", "http://www.webservicex.com/globalweather.asmx?wsdl",
+            "-p", "sample.client",
+            "-d", "adb",
+            "-o", "${generatedDir}",
+            "-uw", "-or", "-s"
+    maxHeapSize = '100M'
+    classpath = sourceSets.main.compileClasspath
+}
+
+compileJava.dependsOn('generateClientSideCode')
 
 /**
  * Generate an Apache Axis archive file for the external service.
@@ -69,16 +91,14 @@ task generateWebServiceCode(type: JavaExec,
  */
 task generateServiceAARFile(type: Jar,
         group: 'build',
-        dependsOn: 'generateWebServiceCode') {
+        dependsOn: 'generateServerSideCode') {
     baseName = "WeatherService"
     extension = "aar"
 
     from(sourceSets.generated.output) {
-        include("**/*.class")
+        exclude("**/sample/**/*.class")
     }
     from(sourceSets.generated.resources) {
         into('META-INF')
     }
 }
-
-compileJava.dependsOn('generateWebServiceCode')
