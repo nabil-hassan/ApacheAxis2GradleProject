@@ -10,6 +10,10 @@ mainClassName = "SampleAxisProject"
 
 ext {
     generatedDir = "${buildDir}/generated"
+    externalWsvcURL = "http://www.webservicex.com/globalweather.asmx?wsdl"
+    aarFileName = "WeatherService"
+    serverSidePackage = "net.weather.webservice"
+    serverSideDir = serverSidePackage.replaceAll("\\.", "/")
 }
 
 dependencies {
@@ -56,13 +60,25 @@ task generateServerSideCode(type: JavaExec,
         group: 'build',
         dependsOn: 'createGeneratedDirectory') {
     main = 'org.apache.axis2.wsdl.WSDL2Java'
-    args "-uri", "http://www.webservicex.com/globalweather.asmx?wsdl",
-            "-p", "net.weather.webservice",
+    args "-uri", externalWsvcURL,
+            "-p", serverSidePackage,
             "-d", "adb",
-            "-o", "${generatedDir}",
+            "-o", generatedDir,
             "-uw", "-or", "-s", "-sd", "-ss", "-ssi"
     maxHeapSize = '100M'
     classpath = sourceSets.main.compileClasspath
+}
+
+generateServerSideCode.doLast {
+    // remove default server skeleton class and replace with a basic implementation
+    File dir = new File("${generatedDir}/src/${serverSideDir}/");
+    File skeletonFile = new File(dir.path + '/' + 'GlobalWeatherSkeleton.java');
+    skeletonFile.delete();
+    File replacementFile = new File("${projectDir}/src/replacement/${serverSideDir}/GlobalWeatherSkeleton.java");
+    copy {
+        from(replacementFile.path)
+        into(dir.path)
+    }
 }
 
 /**
@@ -73,16 +89,16 @@ task generateClientSideCode(type: JavaExec,
         group: 'build',
         dependsOn: 'createGeneratedDirectory') {
     main = 'org.apache.axis2.wsdl.WSDL2Java'
-    args "-uri", "http://www.webservicex.com/globalweather.asmx?wsdl",
+    args "-uri", externalWsvcURL,
             "-p", "sample.client",
             "-d", "adb",
-            "-o", "${generatedDir}",
+            "-o", generatedDir,
             "-uw", "-or", "-s"
     maxHeapSize = '100M'
     classpath = sourceSets.main.compileClasspath
 }
 
-compileJava.dependsOn('generateClientSideCode')
+compileJava.dependsOn('generateClientSideCode', 'generateServerSideCode')
 
 /**
  * Generate an Apache Axis archive file for the external service.
@@ -90,12 +106,14 @@ compileJava.dependsOn('generateClientSideCode')
  */
 task generateServiceAARFile(type: Jar,
         group: 'build',
-        dependsOn: 'generateServerSideCode') {
-    baseName = "WeatherService"
+        dependsOn: 'compileJava') {
+    baseName = aarFileName
     extension = "aar"
 
     from(sourceSets.generated.output) {
-        exclude("**/sample/**/*.class")
+        exclude("**/sample")
+        exclude("*.xml")
+        exclude("*.wsdl")
     }
     from(sourceSets.generated.resources) {
         into('META-INF')
