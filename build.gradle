@@ -57,7 +57,7 @@ task generateWebServiceCode(type: JavaExec,
         dependsOn: 'createGeneratedDirectory') {
     main = 'org.apache.axis2.wsdl.WSDL2Java'
     args "--noBuildXML", "-uri", "http://www.webservicex.com/globalweather.asmx?wsdl", "-p",
-            "sample.webservice.client", "-d", "adb", "-uw", "-o", "${generatedDir}",
+            "sample.webservice", "-d", "adb", "-uw", "-o", "${generatedDir}",
             "-or", "-s", "-ss", "-sd", "-ssi"
     maxHeapSize = '100M'
     classpath = sourceSets.main.compileClasspath
